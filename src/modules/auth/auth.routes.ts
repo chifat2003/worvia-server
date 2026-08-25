@@ -1,83 +1,37 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
-import { db } from "../../db";
-import { users } from "../../db/schema";
-import { hashPassword, verifyPassword } from "./password";
+import { authController } from "./auth.controller";
+import { authenticateToken } from "../../middleware/auth.middleware";
 
-export const authRouter = Router();
+const router = Router();
 
-authRouter.post("/register", async (req, res, next) => {
-  try {
-    const body = req.body as Partial<{
-      name: string;
-      email: string;
-      password: string;
-    }>;
+/**
+ * POST /api/v1/auth/register
+ * Register a new user
+ */
+router.post("/register", authController.register);
 
-    if (!body.name || !body.email || !body.password) {
-      return res.status(400).json({
-        message: "Name, email, and password are required",
-      });
-    }
+/**
+ * POST /api/v1/auth/login
+ * Login user
+ */
+router.post("/login", authController.login);
 
-    const [user] = await db
-      .insert(users)
-      .values({
-        name: body.name,
-        email: body.email.toLowerCase(),
-        password: hashPassword(body.password),
-      })
-      .returning({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        createdAt: users.createdAt,
-      });
+/**
+ * POST /api/v1/auth/refresh-token
+ * Refresh access token
+ */
+router.post("/refresh-token", authController.refreshToken);
 
-    return res.status(201).json({
-      message: "User registered successfully",
-      user,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+/**
+ * GET /api/v1/auth/me
+ * Get current user (requires auth)
+ */
+router.get("/me", authenticateToken, authController.getCurrentUser);
 
-authRouter.post("/login", async (req, res, next) => {
-  try {
-    const body = req.body as Partial<{
-      email: string;
-      password: string;
-    }>;
+/**
+ * POST /api/v1/auth/logout
+ * Logout user
+ */
+router.post("/logout", authenticateToken, authController.logout);
 
-    if (!body.email || !body.password) {
-      return res.status(400).json({
-        message: "Email and password are required",
-      });
-    }
-
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, body.email.toLowerCase()))
-      .limit(1);
-
-    if (!user || !verifyPassword(body.password, user.password)) {
-      return res.status(401).json({
-        message: "Invalid email or password",
-      });
-    }
-
-    return res.json({
-      message: "Login successful",
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+export default router;

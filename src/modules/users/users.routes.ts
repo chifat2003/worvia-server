@@ -1,25 +1,35 @@
 import { Router } from "express";
-import { desc } from "drizzle-orm";
-import { db } from "../../db";
-import { users } from "../../db/schema";
+import { usersController } from "./users.controller";
+import { authenticateToken } from "../../middleware/auth.middleware";
 
 export const usersRouter = Router();
 
-usersRouter.get("/", async (_req, res, next) => {
-  try {
-    const result = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-      })
-      .from(users)
-      .orderBy(desc(users.createdAt));
+/**
+ * GET /api/v1/users
+ * Get all users with pagination
+ */
+usersRouter.get("/", usersController.getAllUsers);
 
-    res.json({ users: result });
-  } catch (error) {
-    next(error);
-  }
-});
+/**
+ * GET /api/v1/users/search
+ * Search users
+ */
+usersRouter.get("/search", usersController.searchUsers);
+
+/**
+ * GET /api/v1/users/:id
+ * Get user profile by ID
+ */
+usersRouter.get("/:id", usersController.getUserProfile);
+
+/**
+ * PUT /api/v1/users/:id
+ * Update user profile (requires auth)
+ */
+usersRouter.put("/:id", authenticateToken, usersController.updateProfile);
+
+/**
+ * DELETE /api/v1/users/:id/deactivate
+ * Deactivate account (requires auth)
+ */
+usersRouter.delete("/:id/deactivate", authenticateToken, usersController.deactivateAccount);
