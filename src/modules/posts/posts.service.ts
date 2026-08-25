@@ -14,18 +14,35 @@ export class PostsService {
    * Create a new post
    */
   async createPost(input: CreatePostInput): Promise<PostWithAuthor> {
-    const [post] = await db
-      .insert(posts)
-      .values({
-        userId: input.userId,
-        content: input.content,
-        contentHtml: input.contentHtml,
-        image: input.image,
-        visibility: input.visibility || "public",
-      })
-      .returning();
+    try {
+      const userId = typeof input.userId === 'string' ? parseInt(input.userId, 10) : input.userId;
+      
+      console.log("📌 PostsService.createPost - userId:", userId, "type:", typeof userId);
 
-    return this.getPostWithAuthor(post.id);
+      // Direct insert with all fields specified
+      const result = await db
+        .insert(posts)
+        .values({
+          userId: userId,
+          content: input.content,
+          contentHtml: input.contentHtml || undefined,
+          image: input.image || undefined,
+          visibility: input.visibility || "public",
+        })
+        .returning();
+
+      if (!result || result.length === 0) {
+        throw new Error("Failed to insert post - no result returned");
+      }
+
+      const post = result[0];
+      console.log("✅ Post created successfully! ID:", post.id, "by user:", post.userId);
+
+      return this.getPostWithAuthor(post.id);
+    } catch (error: any) {
+      console.error("❌ Error in createPost:", error.message);
+      throw new Error(`Failed to create post: ${error.message}`);
+    }
   }
 
   /**

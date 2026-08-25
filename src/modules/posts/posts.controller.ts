@@ -20,13 +20,21 @@ export class PostsController {
    */
   async createPost(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user.id;
+      const userId = (req as any).user?.userId || (req as any).user?.id;
       const { content, contentHtml, image, visibility } = req.body;
+
+      if (!userId) {
+        res.status(401).json({ success: false, error: "Unauthorized - no user ID" });
+        return;
+      }
 
       if (!content || content.trim().length === 0) {
         res.status(400).json({ success: false, error: "Content is required" });
         return;
       }
+
+      console.log("📝 Creating post for user:", userId, "type:", typeof userId);
+      console.log("   Content:", content.substring(0, 50) + "...");
 
       const post = await postsService.createPost({
         userId,
@@ -36,8 +44,11 @@ export class PostsController {
         visibility,
       });
 
+      console.log("✅ Post created:", post.id);
       res.status(201).json({ success: true, data: post });
     } catch (error: any) {
+      console.error("❌ Error creating post:", error.message);
+      console.error("   Stack:", error.stack);
       res.status(500).json({ success: false, error: error.message });
     }
   }
