@@ -84,7 +84,7 @@ export const notifications = pgTable("notifications", {
   userId: integer("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  type: varchar("type", { length: 50 }).notNull(), // connection_request, connection_accepted, mention, follow, message
+  type: varchar("type", { length: 50 }).notNull(), // connection_request, connection_accepted, mention, follow, message, like, comment
   relatedUserId: integer("related_user_id").references(() => users.id, { onDelete: "set null" }),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message"),
@@ -92,6 +92,78 @@ export const notifications = pgTable("notifications", {
   isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// PHASE 3: Posts & Feed
+export const posts = pgTable("posts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  contentHtml: text("content_html"), // Rendered HTML version
+  image: varchar("image", { length: 500 }), // Image URL
+  visibility: varchar("visibility", { length: 20 }).default("public").notNull(), // public, connections, private
+  likeCount: integer("like_count").default(0).notNull(),
+  commentCount: integer("comment_count").default(0).notNull(),
+  shareCount: integer("share_count").default(0).notNull(),
+  engagementScore: integer("engagement_score").default(0).notNull(), // For algorithmic ranking
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const comments = pgTable("comments", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id")
+    .notNull()
+    .references(() => posts.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  parentCommentId: integer("parent_comment_id"), // For nested replies
+  content: text("content").notNull(),
+  contentHtml: text("content_html"), // Rendered HTML version
+  likeCount: integer("like_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const likes = pgTable("likes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  postId: integer("post_id").references(() => posts.id, { onDelete: "cascade" }),
+  commentId: integer("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const hashtags = pgTable("hashtags", {
+  id: serial("id").primaryKey(),
+  tag: varchar("tag", { length: 100 }).notNull().unique(),
+  usageCount: integer("usage_count").default(0).notNull(),
+  lastUsedAt: timestamp("last_used_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const postHashtags = pgTable("post_hashtags", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id")
+    .notNull()
+    .references(() => posts.id, { onDelete: "cascade" }),
+  hashtagId: integer("hashtag_id")
+    .notNull()
+    .references(() => hashtags.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const trends = pgTable("trends", {
+  id: serial("id").primaryKey(),
+  tag: varchar("tag", { length: 100 }).notNull().unique(),
+  postCount: integer("post_count").default(0).notNull(),
+  engagementScore: integer("engagement_score").default(0).notNull(),
+  lastUpdatedAt: timestamp("last_updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Type exports
@@ -109,3 +181,15 @@ export type Mention = typeof mentions.$inferSelect;
 export type NewMention = typeof mentions.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
+export type Post = typeof posts.$inferSelect;
+export type NewPost = typeof posts.$inferInsert;
+export type Comment = typeof comments.$inferSelect;
+export type NewComment = typeof comments.$inferInsert;
+export type Like = typeof likes.$inferSelect;
+export type NewLike = typeof likes.$inferInsert;
+export type Hashtag = typeof hashtags.$inferSelect;
+export type NewHashtag = typeof hashtags.$inferInsert;
+export type PostHashtag = typeof postHashtags.$inferSelect;
+export type NewPostHashtag = typeof postHashtags.$inferInsert;
+export type Trend = typeof trends.$inferSelect;
+export type NewTrend = typeof trends.$inferInsert;
