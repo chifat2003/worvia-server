@@ -21,10 +21,13 @@ export const usersService = {
         where: eq(profiles.userId, userId),
       });
 
+      // Strip password hash from response
+      const { passwordHash: _, ...safeUser } = user;
+
       return {
         success: true,
         data: {
-          user,
+          user: safeUser,
           profile,
         },
       };
@@ -87,9 +90,12 @@ export const usersService = {
         offset,
       });
 
+      // Strip password hashes
+      const safeUsers = userList.map(({ passwordHash: _, ...u }) => u);
+
       return {
         success: true,
-        data: userList,
+        data: safeUsers,
         meta: {
           page,
           limit,
@@ -111,10 +117,10 @@ export const usersService = {
         limit,
       });
 
-      // Filter by email
-      const filtered = userList.filter((u) =>
-        u.email.toLowerCase().includes(query.toLowerCase())
-      );
+      // Filter by email and strip password hash
+      const filtered = userList
+        .filter((u) => u.email.toLowerCase().includes(query.toLowerCase()))
+        .map(({ passwordHash: _, ...u }) => u);
 
       return {
         success: true,
